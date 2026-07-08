@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Motor Muscle Simulator</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="sim-stage" aria-label="simulation viewport">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="experimentEyebrow">mm-scale motor swarm humanoid</p>
+            <h1 id="experimentTitle">微电机人形机器人仿真器</h1>
+          </div>
+          <div class="run-controls">
+            <button id="playPause" class="icon-button" type="button" aria-label="pause simulation" title="暂停/继续">Ⅱ</button>
+            <button id="reset" class="icon-button" type="button" aria-label="reset simulation" title="重置">↺</button>
+          </div>
+        </header>
+
+        <div class="canvas-wrap">
+          <canvas id="fieldCanvas" width="1280" height="820" aria-label="motor field visualization"></canvas>
+          <div class="legend">
+            <span>下凹</span>
+            <div class="legend-bar"></div>
+            <span>上凸</span>
+          </div>
+        </div>
+
+        <footer class="metrics-strip">
+          <div><span id="metricMotors">0</span><small>motors</small></div>
+          <div><span id="metricFps">0</span><small>fps</small></div>
+          <div><span id="metricTemp">0</span><small>avg temp C</small></div>
+          <div><span id="metricCurrent">0</span><small>avg current A</small></div>
+          <div><span id="metricEnergy">0</span><small>energy J</small></div>
+          <div><span id="metricSaturated">0</span><small id="metricAuxLabel">bones covered</small></div>
+        </footer>
+      </section>
+
+      <aside class="control-panel" aria-label="simulation controls">
+        <section class="panel-block">
+          <h2>阵列</h2>
+          <label>
+            实验台
+            <select id="experimentSelect">
+              <option value="humanoid" selected>人形机器人</option>
+              <option value="sheet">复合肌体平面</option>
+            </select>
+          </label>
+          <label>
+            单元密度
+            <select id="gridSelect">
+              <option value="48x36">1,728 motors</option>
+              <option value="64x48">3,072 motors</option>
+              <option value="96x64" selected>6,144 motors</option>
+              <option value="128x96">12,288 motors</option>
+              <option value="160x120">19,200 motors</option>
+            </select>
+          </label>
+          <label>
+            显示层
+            <select id="viewSelect">
+              <option value="height" selected>形变高度</option>
+              <option value="activation">神经激活</option>
+              <option value="temperature">热场</option>
+              <option value="current">电流</option>
+              <option value="strain">局部应变</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="panel-block">
+          <h2>协同模式</h2>
+          <div class="mode-grid" role="group" aria-label="actuation mode">
+            <button class="mode-button active" data-mode="wave" type="button">行波</button>
+            <button class="mode-button" data-mode="curl" type="button">卷曲</button>
+            <button class="mode-button" data-mode="grasp" type="button">夹持</button>
+            <button class="mode-button" data-mode="twist" type="button">扭转</button>
+            <button class="mode-button" data-mode="peristaltic" type="button">蠕动</button>
+            <button class="mode-button" data-mode="focus" type="button">局部隆起</button>
+          </div>
+        </section>
+
+        <section class="panel-block sliders">
+          <h2>物理参数</h2>
+          <label>模式幅度 <input id="amplitude" type="range" min="0" max="1.8" value="1.0" step="0.01" /></label>
+          <label>频率 <input id="frequency" type="range" min="0.05" max="3.5" value="0.8" step="0.01" /></label>
+          <label>结构耦合 <input id="coupling" type="range" min="0" max="90" value="42" step="1" /></label>
+          <label>神经扩散 <input id="diffusion" type="range" min="0" max="18" value="6" step="0.1" /></label>
+          <label>热负载 <input id="thermal" type="range" min="0.4" max="3" value="1.0" step="0.01" /></label>
+          <label>制造离散性 <input id="variation" type="range" min="0" max="0.28" value="0.08" step="0.01" /></label>
+          <label>模拟速度 <input id="speed" type="range" min="0.2" max="3.0" value="1.0" step="0.05" /></label>
+        </section>
+
+        <section class="panel-block">
+          <h2>状态读数</h2>
+          <canvas id="sparkCanvas" width="360" height="120" aria-label="history chart"></canvas>
+          <p class="note" id="modelNote">人形模型包含 206 块骨头，每块骨头附着执行器；顶层运动模式经自适应控制转换为局部微电机驱动。</p>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
