@@ -76,3 +76,22 @@ def test_mjx_rollout_contract():
     assert observation.shape == (3, 2, 108)
     assert reward.shape == terminated.shape == truncated.shape == (3, 2)
     assert info["energy_j"].shape == (3, 2)
+
+
+def test_mjx_trace_contains_physics_state():
+    import jax
+
+    from motor_muscle.config import ExperimentConfig
+    from motor_muscle.mjx_env import MJXMotorMuscleEnv
+
+    env = MJXMotorMuscleEnv(
+        ExperimentConfig(motor_count=1_000, duration_s=0.02), batch_size=2
+    )
+    env.reset_batch([10, 11])
+    actions = np.zeros((2, 2, env.action_size), dtype=np.float32)
+    trace = env.rollout_trace_batch(actions)
+    jax.block_until_ready(trace["qpos"])
+    assert trace["qpos"].shape == (2, 2, env.mj_model.nq)
+    assert trace["qvel"].shape == (2, 2, env.mj_model.nv)
+    assert trace["terminated"].shape == (2, 2)
+    assert np.all(np.isfinite(np.asarray(trace["qpos"])))

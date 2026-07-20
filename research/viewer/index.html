@@ -48,9 +48,9 @@
       <img src="/results/success_rate.png" alt="三种控制器在测试场景中的成功率">
     </article>
     <article class="panel video">
-      <h2>CPU MuJoCo 回放</h2>
-      <video controls muted loop playsinline src="/results/teacher_smoke.mp4"></video>
-      <p class="note">GPU 负责批量数值 rollout；选定轨迹由 CPU MuJoCo 渲染。</p>
+      <h2>GPU 仿真轨迹（CPU 渲染）</h2>
+      <video controls muted loop playsinline src="/results/mjx_gpu_trajectory.mp4"></video>
+      <p class="note">qpos/qvel 来自 ROCm 上的 MJX rollout；CPU 仅把选定世界逐帧渲染成视频。</p>
     </article>
     <article class="panel details">
       <h2>远端验收摘要</h2>
@@ -63,8 +63,9 @@
 Promise.all([
   fetch('/results/remote/mjx_benchmark_final.json').then(r=>r.json()),
   fetch('/results/remote/consistency.json').then(r=>r.json()),
-  fetch('/results/remote/device.json').then(r=>r.json())
-]).then(([bench, parity, device]) => {
+  fetch('/results/remote/device.json').then(r=>r.json()),
+  fetch('/results/remote/mjx_trajectory.json').then(r=>r.json())
+]).then(([bench, parity, device, trace]) => {
   const row=bench.records[0];
   batch.textContent=row.batch_size;
   realtime.textContent=row.aggregate_realtime_factor.toFixed(2);
@@ -77,7 +78,14 @@ Promise.all([
     finite: row.finite,
     motor_maximum_error: parity.motor.maximum_error,
     physics_observation_rmse: parity.physics.control_step_observation_rmse,
-    cpu_mjx_consistency: parity.ok
+    cpu_mjx_consistency: parity.ok,
+    trajectory: {
+      source: trace.device,
+      selected_seed: trace.selected_seed,
+      controller: trace.controller,
+      control_signal: trace.control_signal,
+      survival_time_s: trace.survival_time_s
+    }
   }, null, 2);
 }).catch(error => details.textContent='结果读取失败：'+error);
 </script>

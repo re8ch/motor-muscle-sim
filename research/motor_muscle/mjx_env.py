@@ -211,6 +211,7 @@ class MJXMotorMuscleEnv:
         self.initial_height = None
         self._compiled_step = self.jax.jit(self._step_impl)
         self._compiled_rollout = self.jax.jit(self._rollout_impl)
+        self._compiled_trace_rollout = self.jax.jit(self._trace_rollout_impl)
 
     @property
     def action_size(self) -> int:
@@ -541,6 +542,87 @@ class MJXMotorMuscleEnv:
             results.truncated,
             results.info,
         )
+
+    def _trace_rollout_impl(
+        self,
+        data,
+        motor_parameters,
+        motor_state,
+        previous_action,
+        delay_buffer,
+        delay_cursor,
+        actions,
+        initial_height,
+    ):
+        def control_step(carry, action):
+            data, motor_state, previous_action, delay_buffer, delay_cursor = carry
+            outputs = self._step_impl(
+                data,
+                motor_parameters,
+                motor_state,
+                previous_action,
+                delay_buffer,
+                delay_cursor,
+                action,
+                initial_height,
+            )
+            next_carry = outputs[:5]
+            next_data = next_carry[0]
+            trace = (
+                next_data.qpos,
+                next_data.qvel,
+                outputs[5].terminated,
+                outputs[5].truncated,
+                outputs[5].info,
+            )
+            return next_carry, trace
+
+        initial = (
+            data,
+            motor_state,
+            previous_action,
+            delay_buffer,
+            delay_cursor,
+        )
+        final, trace = self.jax.lax.scan(control_step, initial, actions)
+        return (*final, trace)
+
+    def rollout_trace_batch(self, actions):
+        """Run on device and return qpos/qvel traces at control-rate boundaries."""
+        actions = self.jnp.asarray(actions, dtype=self.jnp.float32)
+        if actions.ndim != 3 or actions.shape[1:] != (
+            self.batch_size,
+            self.action_size,
+        ):
+            raise ValueError(
+                "expected rollout actions shaped "
+                f"[time, {self.batch_size}, {self.action_size}], got {actions.shape}"
+            )
+        (
+            self.data,
+            self.motor_state,
+            self.previous_action,
+            self.delay_buffer,
+            self.delay_cursor,
+            trace,
+        ) = self._compiled_trace_rollout(
+            self.data,
+            self.motor_parameters,
+            self.motor_state,
+            self.previous_action,
+            self.delay_buffer,
+            self.delay_cursor,
+            actions,
+            self.initial_height,
+        )
+        qpos, qvel, terminated, truncated, info = trace
+        return {
+            "qpos": qpos,
+            "qvel": qvel,
+            "terminated": terminated,
+            "truncated": truncated,
+            "info": info,
+        }
 
     def step(self, action):
         if self.batch_size != 1:

@@ -8,8 +8,11 @@ remote_root="/root/projects/motor-muscle-sim/research"
 rsync -az research/viewer/ "${host}:${remote_root}/viewer/"
 rsync -az \
   research/results/success_rate.png \
-  research/results/teacher_smoke.mp4 \
+  research/results/mjx_gpu_trajectory.mp4 \
   "${host}:${remote_root}/results/"
+rsync -az \
+  research/results/remote/mjx_trajectory.json \
+  "${host}:${remote_root}/results/remote/"
 
 ssh "${host}" bash -s -- "${remote_root}" "${port}" <<'REMOTE'
 set -euo pipefail

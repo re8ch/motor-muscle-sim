@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import json
 from pathlib import Path
 import platform
@@ -82,6 +83,18 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--steps", type=int, default=20)
     benchmark.add_argument("--motors", type=int, default=20_000)
     benchmark.add_argument("--batch-sizes", default="64,128,256")
+
+    trace = sub.add_parser("mjx-trace")
+    trace.add_argument("--output", default="results/remote/mjx_trajectory.npz")
+    trace.add_argument("--batch-size", type=int, default=64)
+    trace.add_argument("--steps", type=int, default=500)
+    trace.add_argument("--motors", type=int, default=20_000)
+    trace.add_argument("--seed", type=int, default=1000)
+
+    render_trace = sub.add_parser("render-trace")
+    render_trace.add_argument("--input", default="results/remote/mjx_trajectory.npz")
+    render_trace.add_argument("--output", default="results/mjx_gpu_trajectory.mp4")
+    render_trace.add_argument("--fps", type=int, default=30)
     return parser
 
 
@@ -161,6 +174,66 @@ def main() -> int:
                 indent=2,
             )
         )
+        return 0
+    if args.command == "mjx-trace":
+        import jax
+        import numpy as np
+
+        from .controllers import FixedOscillator
+        from .mjx_env import MJXMotorMuscleEnv
+
+        config = ExperimentConfig(
+            motor_count=args.motors,
+            duration_s=args.steps / 100.0,
+            controller="oscillator",
+        )
+        env = MJXMotorMuscleEnv(config, args.batch_size)
+        seeds = np.arange(args.seed, args.seed + args.batch_size, dtype=np.int64)
+        env.reset_batch(seeds)
+        oscillator = FixedOscillator(env.dof_names)
+        actions = np.zeros(
+            (args.steps, args.batch_size, env.action_size), dtype=np.float32
+        )
+        for step in range(args.steps):
+            signed = oscillator.command(step / config.control_hz)
+            actions[step, :, : len(env.dof_indices)] = signed
+        trace = env.rollout_trace_batch(actions)
+        jax.block_until_ready(trace["qpos"])
+        terminated = np.asarray(trace["terminated"])
+        first_fall = np.where(
+            terminated.any(axis=0), terminated.argmax(axis=0), args.steps
+        )
+        selected = int(np.argmax(first_fall))
+        metadata = {
+            "backend": "mjx",
+            "device": [str(device) for device in jax.devices()],
+            "config": asdict(config),
+            "batch_size": args.batch_size,
+            "selected_world": selected,
+            "selected_seed": int(seeds[selected]),
+            "controller": "fixed_oscillator",
+            "control_signal": "100 Hz continuous real values with zero-order hold",
+            "physics_dt": config.physics_dt,
+            "survival_time_s": float(first_fall[selected] / config.control_hz),
+        }
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(
+            output,
+            qpos=np.asarray(trace["qpos"])[:, selected],
+            qvel=np.asarray(trace["qvel"])[:, selected],
+            terminated=terminated[:, selected],
+            metadata=json.dumps(metadata),
+        )
+        output.with_suffix(".json").write_text(
+            json.dumps(metadata, indent=2), encoding="utf-8"
+        )
+        print(json.dumps({**metadata, "output": str(output)}, indent=2))
+        return 0
+    if args.command == "render-trace":
+        from .video import render_mjx_trace
+
+        print(render_mjx_trace(args.input, args.output, args.fps))
         return 0
 
     from .controllers import ResidualPolicy
