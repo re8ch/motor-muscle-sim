@@ -10,3 +10,11 @@ yarn-error.log*
 *.gif
 coverage/
 dist/
+.venv/
+.tools/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+research/artifacts/
+research/results/
+research/.venv-rocm/

@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "smoke": "node tests/smoke.mjs"
+    "smoke": "node tests/smoke.mjs",
+    "research:doctor": "research/.venv/bin/muscle-research doctor",
+    "research:test": "research/.venv/bin/python -m pytest research/tests",
+    "research:quick": "cd research && .venv/bin/muscle-research all --quick"
   }
 }
