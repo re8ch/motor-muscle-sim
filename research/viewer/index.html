@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motor Muscle Sim · 仿真结果</title>
+  <style>
+    :root { color-scheme: dark; --bg:#09111a; --panel:#111e2a; --line:#263847; --muted:#91a3b2; --cyan:#52e5d1; --orange:#ffb86b; }
+    * { box-sizing:border-box }
+    body { margin:0; background:radial-gradient(circle at 90% 0,#153343 0,transparent 35%),var(--bg); color:#edf6f7; font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace }
+    main { width:min(1180px,calc(100% - 32px)); margin:0 auto; padding:42px 0 60px }
+    header { display:flex; justify-content:space-between; gap:24px; align-items:end; margin-bottom:28px }
+    h1 { font:700 clamp(28px,5vw,54px)/1.05 system-ui,sans-serif; letter-spacing:-.04em; margin:0 }
+    h2 { font:650 18px/1.2 system-ui,sans-serif; margin:0 0 18px }
+    .eyebrow,.status { color:var(--cyan); text-transform:uppercase; letter-spacing:.12em; font-size:12px }
+    .status::before { content:""; display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--cyan); margin-right:8px; box-shadow:0 0 12px var(--cyan) }
+    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px }
+    .panel { background:color-mix(in srgb,var(--panel) 92%,transparent); border:1px solid var(--line); border-radius:16px; padding:20px; overflow:hidden }
+    .metrics { grid-column:span 12; display:grid; grid-template-columns:repeat(4,1fr); gap:1px; padding:0; background:var(--line) }
+    .metric { background:var(--panel); padding:22px }
+    .metric b { display:block; color:var(--cyan); font:700 29px/1.1 system-ui,sans-serif; margin:8px 0 4px }
+    .metric small,.note { color:var(--muted) }
+    .chart { grid-column:span 7 }
+    .video { grid-column:span 5 }
+    .details { grid-column:span 12 }
+    img,video { width:100%; border-radius:10px; background:#05090d; display:block }
+    pre { margin:0; white-space:pre-wrap; color:#c4d4dc; max-height:360px; overflow:auto }
+    a { color:var(--cyan) }
+    footer { margin-top:20px; color:var(--muted); font-size:12px }
+    @media(max-width:760px) { header{align-items:start;flex-direction:column}.metrics{grid-template-columns:repeat(2,1fr)}.chart,.video{grid-column:span 12} }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div><div class="eyebrow">MJX / ROCm validation node</div><h1>两万微电机<br>人形仿真结果</h1></div>
+    <div class="status">amdwsl-zt online</div>
+  </header>
+  <section class="grid">
+    <div class="panel metrics">
+      <div class="metric"><small>并行世界</small><b id="batch">—</b><span>worlds</span></div>
+      <div class="metric"><small>总实时倍率</small><b id="realtime">—</b><span>× realtime</span></div>
+      <div class="metric"><small>相对 CPU</small><b id="speedup">—</b><span>× speedup</span></div>
+      <div class="metric"><small>一致性 RMSE</small><b id="rmse">—</b><span>CPU ↔ MJX</span></div>
+    </div>
+    <article class="panel chart">
+      <h2>控制器成功率</h2>
+      <img src="/results/success_rate.png" alt="三种控制器在测试场景中的成功率">
+    </article>
+    <article class="panel video">
+      <h2>CPU MuJoCo 回放</h2>
+      <video controls muted loop playsinline src="/results/teacher_smoke.mp4"></video>
+      <p class="note">GPU 负责批量数值 rollout；选定轨迹由 CPU MuJoCo 渲染。</p>
+    </article>
+    <article class="panel details">
+      <h2>远端验收摘要</h2>
+      <pre id="details">正在读取远端结果…</pre>
+    </article>
+  </section>
+  <footer>只读内网页面 · 数据来自 research/results · 刷新页面即可读取最新 JSON</footer>
+</main>
+<script>
+Promise.all([
+  fetch('/results/remote/mjx_benchmark_final.json').then(r=>r.json()),
+  fetch('/results/remote/consistency.json').then(r=>r.json()),
+  fetch('/results/remote/device.json').then(r=>r.json())
+]).then(([bench, parity, device]) => {
+  const row=bench.records[0];
+  batch.textContent=row.batch_size;
+  realtime.textContent=row.aggregate_realtime_factor.toFixed(2);
+  speedup.textContent=row.speedup_vs_cpu_single.toFixed(2);
+  rmse.textContent=parity.physics.control_step_observation_rmse.toExponential(2);
+  details.textContent=JSON.stringify({
+    device: device.jax?.devices || device.devices || bench.device,
+    motor_count: row.motor_count,
+    physics_steps_per_second: row.physics_steps_per_second,
+    finite: row.finite,
+    motor_maximum_error: parity.motor.maximum_error,
+    physics_observation_rmse: parity.physics.control_step_observation_rmse,
+    cpu_mjx_consistency: parity.ok
+  }, null, 2);
+}).catch(error => details.textContent='结果读取失败：'+error);
+</script>
+</body>
+</html>
