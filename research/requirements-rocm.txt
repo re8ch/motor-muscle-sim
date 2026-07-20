@@ -1,0 +1,14 @@
+# Ubuntu 24.04 / Python 3.12 / ROCm 6.4.2 official AMD wheels.
+# Install in this exact order; see scripts/setup_rocm_remote.sh.
+https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.2/jax_rocm60_pjrt-0.4.35-py3-none-manylinux_2_28_x86_64.whl
+https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.2/jax_rocm60_plugin-0.4.35-cp312-cp312-manylinux_2_28_x86_64.whl
+https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.2/jaxlib-0.4.35-cp312-cp312-manylinux_2_28_x86_64.whl
+https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.2/jax-0.4.35-py3-none-any.whl
+mujoco==3.3.5
+mujoco-mjx==3.3.5
+numpy==2.1.3
+pytest==8.3.5
+matplotlib==3.10.1
+imageio==2.37.0
+imageio-ffmpeg==0.6.0
+
